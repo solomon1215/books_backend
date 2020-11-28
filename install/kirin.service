@@ -1,0 +1,14 @@
+[Unit]
+Description=XDMS Kirin System
+After=network.target
+
+[Service]
+Type=simple
+User=kirin
+Group=kirin
+ExecStart=main.py --config /etc/kirin/kirin.conf --logfile /var/log/kirin/kirin-server.log
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
+
