@@ -1,30 +1,18 @@
 import hashlib
-import contextlib
 from sanic import exceptions
-from sanic.response import json, text
+from sanic.response import json
 from workers import tasks
 from kirin.models.database import *
 from passlib.context import CryptContext
 from kirin.models.redis import Redis
 from kirin.misc.response_code import ResponseCode as CODE
 
-import pytz
-import datetime
 import time
-import ipaddress
-import itertools
-import logging
-import hmac
-import uuid
-from json import dumps
 
-from collections import defaultdict
-from hashlib import sha256
-from itertools import chain, repeat
-import passlib.context
+import logging
+
 from functools import wraps
 from config.settings import settings
-from kirin.tools.exceptions import AccessDenied, ValidationError, UserError, AccessError, Warning
 
 _logger = logging.getLogger(__name__)
 
@@ -69,10 +57,6 @@ async def application_auth(user_id, key, sign, timestamp):
 async def authenticate(request, *args, **kwargs):
     username = (request.json and request.json.get("username", None)) or (request.args and request.args.get('username'))
     password = (request.json and request.json.get("password", None)) or (request.args and request.args.get('password'))
-    key = (request.json and request.json.get("key", None)) or (request.args and request.args.get('key'))
-    sign = (request.json and request.json.get("sign", None)) or (request.args and request.args.get('sign'))
-    timestamp = (request.json and request.json.get("timestamp", None)) or (
-            request.args and request.args.get('timestamp'))
 
     if not (username and password):
         raise exceptions.SanicException("Missing username or password.")
@@ -81,15 +65,6 @@ async def authenticate(request, *args, **kwargs):
 
     if not auth.get('valid'):
         raise exceptions.SanicException("Wrong username or password.")
-
-    # 根据API访问类型判断用户是外部用户还是内部用户
-    if auth.get('api_access') in ['external']:
-        if not (key and sign and timestamp):
-            raise exceptions.SanicException("Missing key or sign or timestamp!")
-
-        user_id = auth.get('user_id')
-
-        await application_auth(user_id, key, sign, timestamp)
 
     return auth
 
@@ -291,7 +266,7 @@ class Users(object):
 
         password = self._crypt_context().encrypt(password)
 
-        sql_create_user = f"INSERT INTO tb_users (login, password) VALUES ('{login}','{password}');"
+        sql_create_user = f"INSERT INTO tb_users (login, password) VALUES ('{login}','{password}') RETURNING id;"
 
         user_id = await Database().execute(sql_create_user)
 

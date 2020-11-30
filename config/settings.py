@@ -22,13 +22,13 @@ settings = {
     'SANIC_JWT_SECRET': '$$$asjfhldsjfhlskjgVVVdfsdfaff134141!#@#$$$$$rtbbbbg$$$',
 
     # BASE_URL
-    'BASE_URL': 'https://api.b2b.91t.com',
+    'BASE_URL': '',
 
     # WX WORK
     'WX_WORK_API_BASE_URL': 'https://qyapi.weixin.qq.com/cgi-bin',
 
     # ELASTIC
-    'ELASTIC_SEARCH_URL': 'https://index.data.91t.com',
-    'ELASTIC_SEARCH_USER': 'xibao',
-    'ELASTIC_SEARCH_PASS': '5DDp9r13165nmmBH5N7k'
+    'ELASTIC_SEARCH_URL': '',
+    'ELASTIC_SEARCH_USER': '',
+    'ELASTIC_SEARCH_PASS': ''
 }

@@ -12,9 +12,8 @@ from kirin.misc.response_code import ResponseCode as CODE
 _logger = logging.getLogger(__name__)
 
 
-async def get_query_response(request, table, int_params=[], numeric_params=[], mis_params=[], sql_select=None,
-                             sql_where=None):
-
+async def get_query_response(request, table, int_params=[], numeric_params=[], mis_params=[],
+                             sql_select=None, sql_where=None):
     int_params_kwargs = {}
     mis_params.extend(int_params)
     int_params.extend(['page', 'size'])
@@ -32,7 +31,8 @@ async def get_query_response(request, table, int_params=[], numeric_params=[], m
 
     sql_select = sql_select if sql_select else """SELECT * """
     sql_from = "FROM {}".format(table)
-    sql_where = sql_where if sql_where else ""
+    sql_where = sql_where if sql_where else "WHERE is_delete=False"
+    sql_order_by = "order by write_date desc"
     sql_count = "SELECT COUNT(*)"
 
     request.args.update(response)
@@ -43,11 +43,10 @@ async def get_query_response(request, table, int_params=[], numeric_params=[], m
     for key, item in request.args.items():
         if key in mis_params and key not in ['page', 'size']:
             sql_where += f"WHERE {key}='{item[0]}' " if not sql_where else f"AND {key}='{item[0]}' "
-
     sql_count = f"{sql_count} {sql_from} {sql_where}"
     records = await Database().fetchrow(sql_count)
     total = records[0]
-    sql_query = f"{sql_select} {sql_from} {sql_where} LIMIT {size} OFFSET {size * (page - 1)}"
+    sql_query = f"{sql_select} {sql_from} {sql_where} {sql_order_by} LIMIT {size} OFFSET {size * (page - 1)}"
     records = await Database().execute(sql_query)
     data = []
     response = {}
@@ -228,10 +227,10 @@ async def delete_unlink_response(request, table, fields):
     fields: 标记删除的字段
     """
 
-    selects = request.args and request.args.get('selects')
-    if not selects:
+    ids = request.args and request.args.get('ids')
+    if not ids:
         response = {
-            'content': '未提供selects参数!'
+            'content': '未提供ids参数!'
         }
         response.update(CODE.CODE_406)
         return 406, response
@@ -245,7 +244,7 @@ async def delete_unlink_response(request, table, fields):
 
     sql_update = f"""UPDATE {table} """
     sql_set = """SET """
-    sql_where =f"WHERE id ={eval(selects)[0]}" if len(eval(selects))==1 else f"WHERE id in {tuple(eval(selects))} "
+    sql_where = f"WHERE id ={eval(ids)[0]}" if len(eval(ids)) == 1 else f"WHERE id in {tuple(eval(ids))} "
     val_list = []
     for field in fields:
         val_list.append(f"{field}='true' ")
@@ -356,3 +355,40 @@ async def get_instance_response(request, table, id, numeric_params=[], sql_selec
     response.update(CODE.CODE_200)
     return 200, response
 
+
+async def delete_instance_response(request, table, id, fields):
+    if not fields:
+        response = {
+            'content': '未提供删除标记字段!'
+        }
+        response.update(CODE.CODE_406)
+        return 406, response
+    sql_update = f"""UPDATE {table} """
+    sql_set = """SET """
+    sql_where = f"WHERE id ={id}"
+    val_list = []
+    for field in fields:
+        val_list.append(f"{field}='true' ")
+    sql_val = ", ".join(val_list)
+    if not val_list:
+        response = {
+            'content': '未提供可更新数字段值!'
+        }
+        response.update(CODE.CODE_406)
+        return 406, response
+    sql_update = f"{sql_update} {sql_set} {sql_val} {sql_where} RETURNING id"
+    try:
+        await Database().execute(sql_update)
+    except Exception as e:
+        _logger.error(f"{traceback.print_exc()}")
+        _logger.error(f"{e}")
+        response = {
+            'content': '数据删除失败!!'
+        }
+        return 406, response
+    response = {
+        'content': '数据删除成功!!'
+    }
+    response.update(CODE.CODE_200)
+
+    return 200, response
